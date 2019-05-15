@@ -20,11 +20,11 @@ The suggested source directory structure on your PC is:
 In addition, you may want to create a python venv directory under robot_root
 and install robot-brains into it.  To do this:
 
-#. Install [python3](https://python.org) on your PC.
-#. Create your robot_root directory, and cd to it.
-#. Create the python virtualenv directory:
+1. Install [python3](https://python.org) on your PC.
+1. Create your robot_root directory, and cd to it.
+1. Create the python virtualenv directory:
    - python -m venv venv
-#. Activate the virtualenv (this will change your prompt):
+1. Activate the virtualenv (this will change your prompt):
    - on Linux:
      - . venv/bin/activate
    - on Windows:
@@ -32,7 +32,7 @@ and install robot-brains into it.  To do this:
 
 At this point, you have two options:
 
-#. Install the latest version of robot-brains from the
+1. Install the latest version of robot-brains from the
    [Python Package Index](https://pypi.org/).
 
    - This won't give you access to the latest developer version.
@@ -41,7 +41,7 @@ At this point, you have two options:
 
      - pip install robot-brains
 
-#. Run robot-brains from the sources:
+1. Run robot-brains from the sources:
 
    - This gives you access to the latest developer version (for better or for
      worse).
