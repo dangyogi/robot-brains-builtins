@@ -6,7 +6,7 @@ module
 
 var tasks is label_t
 var what_next is label_t
-var p_config is labels.p_config_s_t
+var p_config is labels.iter_types.p_config_t
 
 dim tasks[100, 2]
 
