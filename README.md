@@ -25,7 +25,7 @@ and install robot-brains into it.  To do this:
 1. Create the python virtualenv directory:
    - python -m venv venv
 1. Activate the virtualenv (this will change your prompt):
-   - on Linux:
+   - on Linux (note the dot (.)):
      - . venv/bin/activate
    - on Windows:
      - venv/bin/activate

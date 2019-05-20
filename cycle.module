@@ -60,6 +60,7 @@ subroutine run_all name$
     goto p_next   # we're off to the races!
 
   label c_yield subr
+    # Another subr to start running
     var subr is subr_t
     var mod is module
     set mod to: {labels.get_subr_module subr}
@@ -69,9 +70,10 @@ subroutine run_all name$
     telemetry.report_string key: "run_all, subr name" value: subr_name$
 
     telemetry.report_string key: "run_all" value: "calling next subr"
-    subr returning_to: what_next
+    subr returning_to: do_what_next
 
   label c_done
+    # Nothing else to start running, switch what_next to run_next_task
     telemetry.report_string key: "irun" value: "c_done called"
     set what_next to: run_next_task 
     goto run_task
@@ -87,6 +89,9 @@ subroutine run_all name$
     | X  | set what_next to: p_next 
     |  X | return
     =================================================================
+
+  label do_what_next
+    goto what_next
 
 
   label run_next_task
@@ -157,7 +162,7 @@ subroutine schedule subr
     done
 
     # Start the new thread
-    subr returning_to: what_next
+    subr returning_to: do_what_next
 
 
 subroutine delay secs

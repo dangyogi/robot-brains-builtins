@@ -4,13 +4,14 @@
 # use consumer iter_types c_yield c_done
 #
 # subroutine my_consumer p_config
+#     var p_config is consumer.p_config_t
 #     <init code>
 #     goto consumer.start p_config
 #
 #   label c_yield element
 #     <process element>
 #     goto consumer.p_next
-#     consumer.p_done
+#  or consumer.p_done
 #     goto c_done
 #
 #   label c_done
@@ -18,6 +19,7 @@
 
 module iter_types c_yield c_done
 
+var iter_types is module
 var c_yield is iter_types.c_yield_t
 var c_done is iter_types.c_done_t
 

@@ -10,7 +10,7 @@
 #   label p_next
 #     <figure out next element>
 #     goto producer.c_yield next_element
-#     done
+#  or done
 #     goto producer.c_done
 #
 #   subroutine p_done

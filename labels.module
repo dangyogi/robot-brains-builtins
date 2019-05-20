@@ -2,6 +2,8 @@
 
 module
 
+use iter_types subr_t
+
 # Calls c_config, each time it is passed.
 type p_config_s_t is subroutine taking ?c_yield: c_yield_s_t ?c_done: c_done_t
                                     -> ?c_config: c_config_s_t
@@ -59,7 +61,7 @@ function gen_all_subroutines name$ returning p_config_s_t
                      -> ?p_config: p_config_m
     var p_next_m is p_next_t
     var p_done_m is p_done_t
-    var p_config_m is modules.p_config_m_t
+    var p_config_m is modules.iter_types.p_config_t
     return
 
   label p_next_m_shim
@@ -98,10 +100,11 @@ function gen_all_subroutines name$ returning p_config_s_t
     var c_done_s is c_done_t
     var c_config_s is c_config_s_t
     =============================================================
-    | YN | p_config_s2_set?
+    | YYN | got? c_yield:
+    | YN- | p_config_s2_set?
     =============================================================
-    | X  | p_config_s2 c_yield: c_yield_s
-    |  X | continue
+    | X   | p_config_s2 c_yield: c_yield_s
+    |  XX | continue
     =============================================================
     ========================================================================
     | YN | got? c_config:
@@ -112,7 +115,8 @@ function gen_all_subroutines name$ returning p_config_s_t
 
 
 function gen_subroutines mod name$ returning p_config_s_t
-    # Generates all of the subroutines not requiring any parameters
+    # Generates all of the subroutines in mod named name$ and not requiring
+    # any parameters.
     set ilabel to: 0
     goto return_label p_config
   
