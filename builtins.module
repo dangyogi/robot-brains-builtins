@@ -6,10 +6,10 @@
 
 module
 
-use cycle
 use telemetry
 use modules
 use labels
+use cycle
 
 type subr_t is subroutine
 

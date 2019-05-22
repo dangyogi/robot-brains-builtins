@@ -5,7 +5,7 @@
 #
 # function my_producer returning iter_types.p_config_t
 #     <init code>
-#     goto return_label producer.p_config  # I'm still running...
+#     goto producer.start return_label          # I'm still running...
 #
 #   label p_next
 #     <figure out next element>
@@ -17,20 +17,81 @@
 #     done with: my_producer
 #     return
 
-module iter_types p_next p_done
+module iter_types p_next_orig p_done_orig
+    -> ?new_c_yield: new_c_yield
+    -> ?new_c_done: new_c_done
+    -> ?new_c_config: new_c_config
 
+var iter_types is module
+var p_next_orig   is iter_types.p_next_t
+var p_done_orig   is iter_types.p_done_t
 var p_next   is iter_types.p_next_t
 var p_done   is iter_types.p_done_t
+var new_c_yield is subroutine taking c_yield: iter_types.c_yield_t
+var new_c_done is subroutine taking c_done: iter_types.c_done_t
+var new_c_config is subroutine taking c_config: iter_types.c_config_t
 var c_yield  is iter_types.c_yield_t
 var c_done   is iter_types.c_done_t
 var c_config is iter_types.c_config_t
 
 
+label start ret_label
+    var ret_label is label taking iter_types.p_config_t
+    set p_next to: p_next_orig
+    set p_done to: p_done_orig
+    set c_config_set? to: false?
+    #telemetry.report_string key: "producer.start" value: "returning p_config"
+    goto ret_label p_config
+
+
 subroutine p_config ?c_yield: c_yield ?c_done: c_done ?c_config: c_config
+    #telemetry.report_string key: "producer.p_config" value: "called"
+    ==================================================
+    | YYN | got? c_yield:
+    | YN- | got? module.new_c_yield:
+    ==================================================
+    | X   | new_c_yield c_yield: c_yield
+    |  XX | continue
+    ==================================================
+    ==================================================
+    | YYN | got? c_done:
+    | YN- | got? module.new_c_done:
+    ==================================================
+    | X   | new_c_done c_done: c_done
+    |  XX | continue
+    ==================================================
     ==================================================
     | YN | got? c_config:
     ==================================================
-    | X  | c_config p_next: p_next p_done: p_done
+    | X  | set c_config_set? to: true?
+    |    | c_config p_next: p_next p_done: p_done
+    |    | goto check_new_c_config
+    |  X | return
+    ==================================================
+
+  label check_new_c_config
+    ==================================================
+    | YN | got? module.new_c_config:
+    ==================================================
+    | X  | new_c_config c_config: c_config
+    |  X | return
+    ==================================================
+
+
+subroutine new_p_next p_next: p_next
+    ==================================================
+    | YN | c_config_set?
+    ==================================================
+    | X  | c_config p_next: p_next
+    |  X | return
+    ==================================================
+
+
+subroutine new_p_done p_done: p_done
+    ==================================================
+    | YN | c_config_set?
+    ==================================================
+    | X  | c_config p_done: p_done
     |  X | return
     ==================================================
 

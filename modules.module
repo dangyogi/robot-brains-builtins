@@ -8,16 +8,19 @@ use producer iter_types p_next p_done
 
 function gen_modules returning iter_types.p_config_t
     set imodule to: 0
-    goto return_label producer.p_config
+    goto producer.start return_label
   
   label p_next
+    #telemetry.report_string key: "modules.p_next" value: "called"
     ======================================================
     | YN | imodule < `__num_modules__`
     ======================================================
     | X  | set i to: imodule
     |    | imodule += 1
+    |    | #telemetry.report_string key: "modules.p_next" value: "yielding"
     |    | goto producer.c_yield (`__module_instances__[` i `]`)
     |  X | done
+    |    | #telemetry.report_string key: "modules.p_next" value: "done"
     |    | goto producer.c_done
     ======================================================
 
@@ -28,6 +31,9 @@ function gen_modules returning iter_types.p_config_t
 
 function get_module_name$ mod
     var mod is module
+    #telemetry.report_string key: "modules.get_module_name$" value: "called"
+    #telemetry.report_string key: "modules.get_module_name$ returning"
+    #                     -> value: (`` mod `->name`)
     return (`` mod `->name`)
 
 function get_module_filename$ mod

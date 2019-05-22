@@ -4,6 +4,9 @@
 
 module
 
+# FIX
+use consumer modules.iter_types c_yield_mm c_done_mm
+
 var tasks is label_t
 var what_next is label_t
 var p_config is labels.iter_types.p_config_t
@@ -14,12 +17,31 @@ dim inum_tasks[2]
 
 
 function irun
-    # Returns exit_status to be returned from main.
-    telemetry.report_string key: "irun" value: "called, doing run_all 'init'"
+  # FIX
+    telemetry.report_string key: "irun" value: "called, doing gen_modules"
+    goto consumer.start {modules.gen_modules}
 
-    run_all "init"
-    telemetry.report_string key: "irun" value: "init done"
-    goto wait_for_start
+  label c_yield_mm mod_mm
+    var mod_mm is module
+    telemetry.report_string key: "irun.c_yield_mm" value: "called"
+    telemetry.report_string key: "irun.c_yield_mm, got"
+                         -> value: {modules.get_module_name$ mod_mm}
+    goto consumer.p_next
+  
+  label c_done_mm
+    return 4
+
+  #########################################################
+  # FIX
+  #
+  #
+  #
+  # # Returns exit_status to be returned from main.
+  # telemetry.report_string key: "irun" value: "called, doing run_all 'init'"
+  #
+  # run_all "init"
+  # telemetry.report_string key: "irun" value: "init done"
+  # goto wait_for_start
 
   label wait_for_start
     ======================================================================
@@ -33,8 +55,8 @@ function irun
 
   label terminate iexit_status
     # Expected by C routines.  Used instead of exit to run "stop" routines.
-    run_all "stop"
-    return iexit_status
+    #FIX: run_all "stop"
+    return iexit_status from: irun
 
 
 subroutine run_all name$
@@ -57,12 +79,14 @@ subroutine run_all name$
 
     # This calls c_config which sets what_next to p_next
     p_config c_yield: c_yield c_done: c_done c_config: c_config
+    telemetry.report_string key: "run_all" value: "we're off to the races!"
     goto p_next   # we're off to the races!
 
   label c_yield subr
     # Another subr to start running
     var subr is subr_t
     var mod is module
+    telemetry.report_string key: "run_all.c_yield" value: "got another subr"
     set mod to: {labels.get_subr_module subr}
     set mod_name$ to: {modules.get_module_name$ mod}
     telemetry.report_string key: "run_all, module name" value: mod_name$

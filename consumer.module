@@ -17,20 +17,67 @@
 #   label c_done
 #     return
 
-module iter_types c_yield c_done
+module iter_types c_yield_orig c_done_orig
+    -> ?new_p_next: new_p_next
+    -> ?new_p_done: new_p_done
+    -> ?new_p_config: new_p_config
 
 var iter_types is module
+var c_yield_orig is iter_types.c_yield_t
+var c_done_orig is iter_types.c_done_t
 var c_yield is iter_types.c_yield_t
 var c_done is iter_types.c_done_t
 
 var p_next is iter_types.p_next_t
 var p_done is iter_types.p_done_t
 var p_config is iter_types.p_config_t
+var new_p_next is subroutine taking p_next: iter_types.p_next_t
+var new_p_done is subroutine taking p_done: iter_types.p_done_t
+var new_p_config is subroutine taking p_config: iter_types.p_config_t
 
 
 subroutine c_config ?p_next: p_next ?p_done: p_done ?p_config: p_config
+    =================================================
+    | YYN | got? p_next:
+    | YN- | got? module.new_p_next:
+    =================================================
+    | X   | new_p_next p_next: p_next
+    |  XX | continue
+    =================================================
+    =================================================
+    | YYN | got? p_done:
+    | YN- | got? module.new_p_done:
+    =================================================
+    | X   | new_p_done p_done: p_done
+    |  XX | continue
+    =================================================
+    =================================================
+    | YYN | got? p_config:
+    | YN- | got? module.new_p_config:
+    =================================================
+    | X   | new_p_config p_config: p_config
+    |  XX | return
+    =================================================
+
+
+label start p_config ?alt_goto: alt_goto
+    var alt_goto is iter_types.p_next_t
+    set c_yield to: c_yield_orig
+    set c_done to: c_done_orig
+    p_config c_yield: c_yield c_done: c_done c_config: c_config
+    =================================================
+    | YN | got? alt_goto:
+    =================================================
+    | X  | goto alt_goto
+    |  X | goto p_next
+    =================================================
+
+
+subroutine new_c_yield c_yield: c_yield
+    p_config c_yield: c_yield
     return
 
-label start p_config
-    p_config c_yield: c_yield c_done: c_done c_config: c_config
-    goto p_next
+subroutine new_c_done c_done: c_done
+    p_config c_done: c_done
+    return
+

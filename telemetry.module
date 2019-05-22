@@ -36,3 +36,8 @@ subroutine report_float key: key$ value: value
 subroutine report_string key: key$ value: value$
     `printf("%s: %s\n", ` key$ `, ` value$ `);`
     return
+
+
+subroutine report_boolean key: key$ value: value?
+    `printf("%s: %d\n", ` key$ `, ` value? `);`
+    return
