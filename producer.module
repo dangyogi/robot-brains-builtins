@@ -22,17 +22,17 @@ module iter_types p_next_orig p_done_orig
     -> ?new_c_done: new_c_done
     -> ?new_c_config: new_c_config
 
-var iter_types is module
-var p_next_orig   is iter_types.p_next_t
-var p_done_orig   is iter_types.p_done_t
-var p_next   is iter_types.p_next_t
-var p_done   is iter_types.p_done_t
-var new_c_yield is subroutine taking c_yield: iter_types.c_yield_t
-var new_c_done is subroutine taking c_done: iter_types.c_done_t
+var iter_types   is module
+var p_next_orig  is iter_types.p_next_t
+var p_done_orig  is iter_types.p_done_t
+var p_next       is iter_types.p_next_t
+var p_done       is iter_types.p_done_t
+var new_c_yield  is subroutine taking c_yield: iter_types.c_yield_t
+var new_c_done   is subroutine taking c_done: iter_types.c_done_t
 var new_c_config is subroutine taking c_config: iter_types.c_config_t
-var c_yield  is iter_types.c_yield_t
-var c_done   is iter_types.c_done_t
-var c_config is iter_types.c_config_t
+var c_yield      is iter_types.c_yield_t
+var c_done       is iter_types.c_done_t
+var c_config     is iter_types.c_config_t
 
 
 label start ret_label
@@ -40,12 +40,20 @@ label start ret_label
     set p_next to: p_next_orig
     set p_done to: p_done_orig
     set c_config_set? to: false?
-    #telemetry.report_string key: "producer.start" value: "returning p_config"
+    #telemetry.report_string key: {labels.get_subr_module_name$ p_config}
+    #                     -> value: "start returning p_config"
     goto ret_label p_config
 
 
 subroutine p_config ?c_yield: c_yield ?c_done: c_done ?c_config: c_config
-    #telemetry.report_string key: "producer.p_config" value: "called"
+    #telemetry.report_string key: {labels.get_subr_module_name$ p_config}
+    #                     -> value: "p_config called"
+    ==================================================
+    | YN | got? c_config:
+    ==================================================
+    | X  | set c_config_set? to: true?
+    |  X | continue
+    ==================================================
     ==================================================
     | YYN | got? c_yield:
     | YN- | got? module.new_c_yield:
@@ -63,35 +71,54 @@ subroutine p_config ?c_yield: c_yield ?c_done: c_done ?c_config: c_config
     ==================================================
     | YN | got? c_config:
     ==================================================
-    | X  | set c_config_set? to: true?
+    | X  | #telemetry.report_string key: "p_config" value: "calling c_config"
     |    | c_config p_next: p_next p_done: p_done
+    |    | #telemetry.report_string key: "p_config" value: "c_config returned"
     |    | goto check_new_c_config
-    |  X | return
+    |  X | #telemetry.report_string key: "p_config" value: "returning"
+    |    | return
     ==================================================
 
   label check_new_c_config
+    #telemetry.report_string key: {labels.get_subr_module_name$ p_config}
+    #                     -> value: "p_config.check_new_c_config"
     ==================================================
     | YN | got? module.new_c_config:
     ==================================================
     | X  | new_c_config c_config: c_config
-    |  X | return
+    |  X | #telemetry.report_string key: "p_config" value: "returning"
+    |    | return
     ==================================================
 
 
 subroutine new_p_next p_next: p_next
+    # This can be unpredictable if called before start.
+    # In that case c_config_set? may be true?, with the c_config from a prior
+    # run...
+
+    #telemetry.report_string key: {labels.get_subr_module_name$ p_config}
+    #                     -> value: "new_p_next called"
     ==================================================
     | YN | c_config_set?
     ==================================================
     | X  | c_config p_next: p_next
-    |  X | return
+    |  X | #telemetry.report_string key: "new_p_next" value: "returning"
+    |    | return
     ==================================================
 
 
 subroutine new_p_done p_done: p_done
+    # This can be unpredictable if called before start.
+    # In that case c_config_set? may be true?, with the c_config from a prior
+    # run...
+
+    #telemetry.report_string key: {labels.get_subr_module_name$ p_config}
+    #                     -> value: "new_p_done called"
     ==================================================
     | YN | c_config_set?
     ==================================================
     | X  | c_config p_done: p_done
-    |  X | return
+    |  X | #telemetry.report_string key: "new_p_done" value: "returning"
+    |    | return
     ==================================================
 

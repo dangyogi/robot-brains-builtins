@@ -8,16 +8,16 @@ use iter_types subr_t
 # For gen_subroutines
 use producer iter_types p_next p_done
 
-# For gen_all_subroutines
-# p_next_m gets replaced with p_next_s2 after the first call
-use producer as produce_all iter_types p_next_m p_done_s
-                         -> new_c_yield: c_yield_to_p_config_s2
-
-# gen_all_subroutines consuming gen_subroutines
-use consumer iter_types produce_all.c_yield p_next_m_shim
-
 # gen_all_subroutines consuming gen_modules
 use consumer as consume_modules modules.iter_types c_yield_m c_done_m
+
+# For gen_all_subroutines as a producer
+# consume_modules.p_next gets replaced with consumer.p_next after the first call
+use producer as produce_all iter_types consume_modules.p_next p_done_s
+
+# gen_all_subroutines consuming gen_subroutines
+use consumer iter_types produce_all.c_yield consume_modules.p_next
+          -> new_p_next: produce_all.new_p_next
 
 
 var mod is module
@@ -27,83 +27,30 @@ function gen_all_subroutines name$ returning iter_types.p_config_t
     # Generates all subroutines named name$ in all modules and not requiring
     # any parameters.
 
-    # *_s: interface to my consumer
-    #      p_next_m for one call, then p_next_s2
-    #      p_done_s    # my subroutine, never changes
-    #      p_config_s  # my subroutine, never changes
-    # *_m: interface to modules.gen_modules producer
-    #      c_yield_m   # my label, never changes
-    #      c_done_m    # my label, never changes
-    #      c_config_m  # my subroutine, never changes
-    # *_s2: interface to gen_subroutines producer
-    #      c_yield_s2  # c_yield_s, yield directly to my consumer
-    #      c_done_s2   # p_next_m_shim, never changes
-    #      c_config_s2 # my subroutine, never changes
-
-    set p_config_s2_set? to: false?
-    set p_config_m to: {modules.gen_modules}
-    p_config_m c_yield: c_yield_m c_done: c_done_m c_config: c_config_m
-
+    consume_modules.ready {modules.gen_modules}
+    #telemetry.report_string key: "gen_all_subroutines"
+    #                     -> value: "goto produce_all.start"
     goto produce_all.start return_label
 
   ################### *_m: my interface to module.gen_modules #############
   label c_yield_m mod
-    set p_config_s2 to: {gen_subroutines mod name$}
-    set p_config_s2_set? to: true?
-    p_config_s2 c_yield: produce_all.c_yield      # send subrs to my consumer
-             -> c_done: p_next_m_shim   # get next module
-             -> c_config: c_config_s2
-    goto p_next_s2  # get the first subroutine
+    #telemetry.report_string key: "gen_all_subroutines.c_yield_m"
+    #                     -> value: "got module"
+    goto consumer.start {gen_subroutines mod name$}
 
   label c_done_m              # no more modules
+    #telemetry.report_string key: "gen_all_subroutines.c_done_m"
+    #                     -> value: "no more modules, goto produce_all.c_done!"
     done                      # I'm done!
     goto produce_all.c_done   # final goodbye, back to my consumer...
 
-  subroutine c_config_m ?p_next: p_next_m ?p_done: p_done_m 
-                     -> ?p_config: p_config_m
-    var p_next_m is iter_types.p_next_t
-    var p_done_m is iter_types.p_done_t
-    var p_config_m is modules.iter_types.p_config_t
-    return
-
-  label p_next_m_shim
-    set p_config_s2_set? to: false?
-    goto p_next_m
-
-  ################### *_s2: my interface to gen_subroutines ###############
-  subroutine c_config_s2 ?p_next: p_next_s2 ?p_done: p_done_s2
-                      -> ?p_config: p_config_s2
-    var p_next_s2 is iter_types.p_next_t
-    var p_done_s2 is iter_types.p_done_t
-    var p_config_s2 is iter_types.p_config_t
-    ===========================================================
-    | YN | got? p_config:
-    ===========================================================
-    | X  | set p_config_s2_set? to: true?
-    |  X | continue
-    ===========================================================
-    ===========================================================
-    | YN | got? p_next:
-    ===========================================================
-    | X  | produce_all.c_config p_next: p_next_s2
-    |  X | return
-    ===========================================================
-
   ################### *_s: my interface to my consumer ####################
   subroutine p_done_s    # my consumer is bailing out early...
-    p_done_s2     # quit gen_subroutines
-    p_done_m      # quit modules.gen_modules
+    #telemetry.report_string key: "gen_all_subroutines.p_done_s" value: "called"
+    consumer.p_done          # quit gen_subroutines
+    consume_modules.p_done   # quit modules.gen_modules
     done with: gen_all_subroutines
     return
-
-  subroutine c_yield_to_p_config_s2 c_yield: new_c_yield
-    var new_c_yield is iter_types.c_yield_t
-    =============================================================
-    | YN | p_config_s2_set?
-    =============================================================
-    | X  | p_config_s2 c_yield: new_c_yield
-    |  X | return
-    =============================================================
 
 
 function gen_subroutines mod name$ returning iter_types.p_config_t
@@ -154,6 +101,19 @@ function iget_subr_lineno s
 
 function get_subr_module s returning module
     return (`` s `->module`)
+
+
+function get_subr_module_name$ s
+    return (`` s `->module->name`)
+
+
+function get_label_module lab returning module
+    var lab is label
+    return (`` lab `->module`)
+
+
+function get_label_module_name$ lab
+    return (`` lab `->module->name`)
 
 
 function requires_params? s

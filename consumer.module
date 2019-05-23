@@ -7,6 +7,10 @@
 #     var p_config is consumer.p_config_t
 #     <init code>
 #     goto consumer.start p_config
+#  or goto consumer.start p_config alt_goto: somewhere_else
+#  or consumer.ready p_config
+#     <do something>
+#     goto somewhere_else
 #
 #   label c_yield element
 #     <process element>
@@ -37,6 +41,8 @@ var new_p_config is subroutine taking p_config: iter_types.p_config_t
 
 
 subroutine c_config ?p_next: p_next ?p_done: p_done ?p_config: p_config
+    #telemetry.report_string key: {labels.get_subr_module_name$ c_config}
+    #                     -> value: "c_config called"
     =================================================
     | YYN | got? p_next:
     | YN- | got? module.new_p_next:
@@ -56,15 +62,27 @@ subroutine c_config ?p_next: p_next ?p_done: p_done ?p_config: p_config
     | YN- | got? module.new_p_config:
     =================================================
     | X   | new_p_config p_config: p_config
-    |  XX | return
+    |  XX | #telemetry.report_string key: "c_config" value: "returning"
+    |     | return
     =================================================
+
+
+subroutine ready p_config
+    #telemetry.report_string key: {labels.get_subr_module_name$ c_config}
+    #                     -> value: "ready called"
+    set c_yield to: c_yield_orig
+    set c_done to: c_done_orig
+    p_config c_yield: c_yield c_done: c_done c_config: c_config
+    #telemetry.report_string key: {labels.get_subr_module_name$ c_config}
+    #                     -> value: "ready returning"
+    return
 
 
 label start p_config ?alt_goto: alt_goto
     var alt_goto is iter_types.p_next_t
-    set c_yield to: c_yield_orig
-    set c_done to: c_done_orig
-    p_config c_yield: c_yield c_done: c_done c_config: c_config
+    #telemetry.report_string key: {labels.get_subr_module_name$ c_config}
+    #                     -> value: "start"
+    ready p_config
     =================================================
     | YN | got? alt_goto:
     =================================================
@@ -74,10 +92,22 @@ label start p_config ?alt_goto: alt_goto
 
 
 subroutine new_c_yield c_yield: c_yield
+    # This can only be called after ready or start has been called!
+    # Otherwise, you'll get a p_config not set run-time error...
+
+    #telemetry.report_string key: {labels.get_subr_module_name$ c_config}
+    #                     -> value: "new_c_yield called"
     p_config c_yield: c_yield
+    #telemetry.report_string key: "new_c_yield" value: "returning"
     return
 
 subroutine new_c_done c_done: c_done
+    # This can only be called after ready or start has been called!
+    # Otherwise, you'll get a p_config not set run-time error...
+
+    #telemetry.report_string key: {labels.get_subr_module_name$ c_config}
+    #                     -> value: "new_c_done called"
     p_config c_done: c_done
+    #telemetry.report_string key: "new_c_done" value: "returning"
     return
 

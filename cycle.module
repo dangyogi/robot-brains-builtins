@@ -5,7 +5,7 @@
 module
 
 # FIX
-use consumer modules.iter_types c_yield_mm c_done_mm
+use consumer labels.iter_types c_yield_mm c_done_mm
 
 var tasks is label_t
 var what_next is label_t
@@ -16,20 +16,38 @@ dim tasks[100, 2]
 dim inum_tasks[2]
 
 
+subroutine init
+    return
+
+
 function irun
   # FIX
-    telemetry.report_string key: "irun" value: "called, doing gen_modules"
-    goto consumer.start {modules.gen_modules}
+    telemetry.report_string key: "irun"
+                         -> value: "called, doing gen_all_subroutines"
+    goto consumer.start {labels.gen_all_subroutines "init"}
 
-  label c_yield_mm mod_mm
-    var mod_mm is module
-    telemetry.report_string key: "irun.c_yield_mm" value: "called"
+  label c_yield_mm sub_mm
+    var sub_mm is subr_t
+    telemetry.report_string key: "irun.c_yield_mm"
+                         -> value: "called *********************************"
     telemetry.report_string key: "irun.c_yield_mm, got"
-                         -> value: {modules.get_module_name$ mod_mm}
+                         -> value: {labels.get_subr_name$ sub_mm}
+    telemetry.report_string key: "irun.c_yield_mm, in"
+                         -> value: {labels.get_subr_module_name$ sub_mm}
+    consumer.new_c_yield c_yield: c_yield_mm2
     goto consumer.p_next
-  
+
+  label c_yield_mm2 sub_mm
+    telemetry.report_string key: "irun.c_yield_mm2"
+                         -> value: "called *********************************"
+    telemetry.report_string key: "irun.c_yield_mm2, got"
+                         -> value: {labels.get_subr_name$ sub_mm}
+    telemetry.report_string key: "irun.c_yield_mm2, in"
+                         -> value: {labels.get_subr_module_name$ sub_mm}
+    goto consumer.p_next
+
   label c_done_mm
-    return 4
+    return 44
 
   #########################################################
   # FIX
@@ -105,8 +123,8 @@ subroutine run_all name$
   subroutine c_config ?p_next: p_next ?p_done: p_done ?p_config: p_config
     # This only gets called while the producer is still active, so always
     # update what_next.
-    var p_next is p_next_t
-    var p_done is p_done_t
+    var p_next is labels.iter_types.p_next_t
+    var p_done is labels.iter_types.p_done_t
     =================================================================
     | YN | got? p_next:
     =================================================================

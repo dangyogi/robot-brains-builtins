@@ -12,16 +12,7 @@ use labels
 use cycle
 
 type subr_t is subroutine
-
 type label_t is label
-type label_l_t is label taking label_t
-type label_s_t is label taking subr_t
-
-type p_next_t is label          # Ends by going to c_yield or c_done.
-type p_done_t is subroutine     # Does NOT goto c_done!
-
-# Does NOT call p_done, producer must finalize before going here.
-type c_done_t is label
 
 
 subroutine init
