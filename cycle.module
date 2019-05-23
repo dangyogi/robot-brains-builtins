@@ -4,8 +4,7 @@
 
 module
 
-# FIX
-use consumer labels.iter_types c_yield_mm c_done_mm
+use consumer labels.iter_types c_yield c_done new_p_next: set_what_next
 
 var tasks is label_t
 var what_next is label_t
@@ -16,50 +15,12 @@ dim tasks[100, 2]
 dim inum_tasks[2]
 
 
-subroutine init
-    return
-
-
 function irun
-  # FIX
-    telemetry.report_string key: "irun"
-                         -> value: "called, doing gen_all_subroutines"
-    goto consumer.start {labels.gen_all_subroutines "init"}
-
-  label c_yield_mm sub_mm
-    var sub_mm is subr_t
-    telemetry.report_string key: "irun.c_yield_mm"
-                         -> value: "called *********************************"
-    telemetry.report_string key: "irun.c_yield_mm, got"
-                         -> value: {labels.get_subr_name$ sub_mm}
-    telemetry.report_string key: "irun.c_yield_mm, in"
-                         -> value: {labels.get_subr_module_name$ sub_mm}
-    consumer.new_c_yield c_yield: c_yield_mm2
-    goto consumer.p_next
-
-  label c_yield_mm2 sub_mm
-    telemetry.report_string key: "irun.c_yield_mm2"
-                         -> value: "called *********************************"
-    telemetry.report_string key: "irun.c_yield_mm2, got"
-                         -> value: {labels.get_subr_name$ sub_mm}
-    telemetry.report_string key: "irun.c_yield_mm2, in"
-                         -> value: {labels.get_subr_module_name$ sub_mm}
-    goto consumer.p_next
-
-  label c_done_mm
-    return 44
-
-  #########################################################
-  # FIX
-  #
-  #
-  #
-  # # Returns exit_status to be returned from main.
-  # telemetry.report_string key: "irun" value: "called, doing run_all 'init'"
-  #
-  # run_all "init"
-  # telemetry.report_string key: "irun" value: "init done"
-  # goto wait_for_start
+  # Returns iexit_status to be returned from main.
+  telemetry.report_string key: "irun" value: "called, doing run_all 'init'"
+  run_all "init"
+  telemetry.report_string key: "irun" value: "init done"
+  goto wait_for_start
 
   label wait_for_start
     ======================================================================
@@ -73,7 +34,7 @@ function irun
 
   label terminate iexit_status
     # Expected by C routines.  Used instead of exit to run "stop" routines.
-    #FIX: run_all "stop"
+    run_all "stop"
     return iexit_status from: irun
 
 
@@ -93,44 +54,33 @@ subroutine run_all name$
     set inum_tasks[0] to: 0 # num_tasks in tasks array 0
     set inum_tasks[1] to: 0 # num_tasks in tasks array 1
 
-    set p_config to: {labels.gen_all_subroutines name$}
-
-    # This calls c_config which sets what_next to p_next
-    p_config c_yield: c_yield c_done: c_done c_config: c_config
-    telemetry.report_string key: "run_all" value: "we're off to the races!"
-    goto p_next   # we're off to the races!
+    goto consumer.start {labels.gen_all_subroutines name$}
 
   label c_yield subr
     # Another subr to start running
     var subr is subr_t
     var mod is module
     telemetry.report_string key: "run_all.c_yield" value: "got another subr"
-    set mod to: {labels.get_subr_module subr}
-    set mod_name$ to: {modules.get_module_name$ mod}
-    telemetry.report_string key: "run_all, module name" value: mod_name$
-    set subr_name$ to: {labels.get_subr_name$ subr}
-    telemetry.report_string key: "run_all, subr name" value: subr_name$
+    telemetry.report_string key: "c_yield, got"
+                         -> value: {labels.get_subr_name$ subr}
+    telemetry.report_string key: "c_yield, in"
+                         -> value: {labels.get_subr_module_name$ subr}
 
-    telemetry.report_string key: "run_all" value: "calling next subr"
+    telemetry.report_string key: "c_yield" value: "calling next subr"
     subr returning_to: do_what_next
 
   label c_done
     # Nothing else to start running, switch what_next to run_next_task
-    telemetry.report_string key: "irun" value: "c_done called"
+    telemetry.report_string key: "irun" value: "c_done called, no more subrs!"
     set what_next to: run_next_task 
     goto run_task
 
-  subroutine c_config ?p_next: p_next ?p_done: p_done ?p_config: p_config
+  subroutine set_what_next p_next: p_next
     # This only gets called while the producer is still active, so always
     # update what_next.
     var p_next is labels.iter_types.p_next_t
-    var p_done is labels.iter_types.p_done_t
-    =================================================================
-    | YN | got? p_next:
-    =================================================================
-    | X  | set what_next to: p_next 
-    |  X | return
-    =================================================================
+    set what_next to: p_next 
+    return
 
   label do_what_next
     goto what_next
@@ -145,7 +95,7 @@ subroutine run_all name$
     ======================================================================
     | YN | i_task < inum_tasks[i_current]
     ======================================================================
-    | X  | goto tasks[i_task, i_current] # always goes to what_next when
+    | X  | goto tasks[i_task, i_current] # always goes to do_what_next when
                                          # task is done
     |  X | goto swap_task_lists
     ======================================================================
