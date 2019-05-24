@@ -20,15 +20,29 @@ subroutine report_float key: key$ value: value
     =======================================================
 
   label non_zero
-    set flog to: (`log10(` (abs value) `) + 0.000022`)
-    set eng to: (`floor(` (flog / 3.0) `) * 3.0`)
+    # Adding 0.000021715266982 is multiplying by 10**0.000021715266982 or 
+    # 1.0000500025001264, which is slightly more than 10 / 9.9995
+    # (1.000050002500125) to account for rounding causing an additional most
+    # significant digit.
+    set flog to: (`log10(` (abs value) `) + 0.000021715266982`)
+
+    # The exponent to use in the outputed string.
+    # (Note, this is a floating integer).
+    set eng to: (`floor(` (flog / 3.0) `) * 3`)
+
+    # Value adjusted to take out the eng exponent.
     set adj_value to: (value / `exp10(` eng `)`)
+
+    # Num of digits to the right of the decimal.
+    set inum_decimals to: (4 - (`(int)(` (`ceil(` flog `)` - eng) `)`) )
     =========================================================
     | YN | eng == 0
     =========================================================
-    | X  | `printf("%s: %.4f\n", ` key$ `, ` adj_value `);`
+    | X  | `printf("%s: %.*f\n", ` key$ `, (int)(` inum_decimals `), `
+                              -> adj_value `);`
     |    | return
-    |  X | `printf("%s: %.4fe%.0f\n", ` key$ `, ` adj_value `, ` eng `);`
+    |  X | `printf("%s: %.*fe%.0f\n", ` key$ `, (int)(` inum_decimals `), `
+                                   -> adj_value `, ` eng `);`
     |    | return
     =========================================================
 

@@ -1,0 +1,50 @@
+# float_format.opmode
+
+module
+
+
+subroutine start
+  telemetry.report_float key: "1.2344e-3" value: 1.2344e-3
+  cycle.next
+  telemetry.report_float key: "12.344e-3" value: 12.344e-3
+  cycle.next
+  telemetry.report_float key: "123.44e-3" value: 123.44e-3
+  cycle.next
+  telemetry.report_float key: "1234.4e-3" value: 1234.4e-3
+  cycle.next
+  telemetry.report_float key: "12344.0e-3" value: 12344.0e-3
+  cycle.next
+
+  telemetry.report_float key: "1.2344" value: 1.2344
+  cycle.next
+  telemetry.report_float key: "12.344" value: 12.344
+  cycle.next
+  telemetry.report_float key: "123.44" value: 123.44
+  cycle.next
+  telemetry.report_float key: "1234.4" value: 1234.4
+  cycle.next
+  telemetry.report_float key: "12344.0" value: 12344.0
+  cycle.next
+
+  telemetry.report_float key: "9.9995" value: 9.9995
+  cycle.next
+  telemetry.report_float key: "99.995" value: 99.995
+  cycle.next
+  telemetry.report_float key: "999.95" value: 999.95
+  cycle.next
+  telemetry.report_float key: "9999.5" value: 9999.5
+  cycle.next
+  telemetry.report_float key: "99995.0" value: 99995.0
+  cycle.next
+
+  telemetry.report_float key: "9.99949999" value: 9.99949999
+  cycle.next
+  telemetry.report_float key: "99.9949999" value: 99.9949999
+  cycle.next
+  telemetry.report_float key: "999.949999" value: 999.949999
+  cycle.next
+  telemetry.report_float key: "9999.49999" value: 9999.49999
+  cycle.next
+  telemetry.report_float key: "99994.9999" value: 99994.9999
+  cycle.next
+  return

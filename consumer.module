@@ -27,24 +27,25 @@ module iter_types c_yield_orig c_done_orig
     -> ?new_p_config: new_p_config
 
 var iter_types is module
-var c_yield_orig is iter_types.c_yield_t
-var c_done_orig is iter_types.c_done_t
-var c_yield is iter_types.c_yield_t
-var c_done is iter_types.c_done_t
+var c_yield_orig is iter_types.c_yield_t      # linked(auto)
+var c_done_orig is iter_types.c_done_t        # linked(auto)
+var c_yield is iter_types.c_yield_t           # linked(auto)
+var c_done is iter_types.c_done_t             # linked(auto)
 
-var p_next is iter_types.p_next_t
-var p_done is iter_types.p_done_t
-var p_config is iter_types.p_config_t
-var new_p_next is subroutine taking p_next: iter_types.p_next_t
-var new_p_done is subroutine taking p_done: iter_types.p_done_t
-var new_p_config is subroutine taking p_config: iter_types.p_config_t
+var p_next is iter_types.p_next_t             # linked(auto)
+var p_done is iter_types.p_done_t             # linked(auto)
+var p_config is iter_types.p_config_t         # linked(auto)
+var new_p_next is subroutine taking p_next: iter_types.p_next_t        # linked
+var new_p_done is subroutine taking p_done: iter_types.p_done_t        # linked
+var new_p_config is subroutine taking p_config: iter_types.p_config_t  # linked
 
-
+# not reentrant
+# (but what if new_p_next, new_p_done and/or new_p_config are reentrant)?
 subroutine c_config ?p_next: p_next ?p_done: p_done ?p_config: p_config
     #telemetry.report_string key: {labels.get_subr_module_name$ c_config}
     #                     -> value: "c_config called"
     =================================================
-    | YYN | got? p_next:
+    | YYN | got? p_next:              # params_passed and vars_set are auto
     | YN- | got? module.new_p_next:
     =================================================
     | X   | new_p_next p_next: p_next
@@ -67,7 +68,7 @@ subroutine c_config ?p_next: p_next ?p_done: p_done ?p_config: p_config
     =================================================
 
 
-subroutine ready p_config
+subroutine ready p_config                   # not reentrant
     #telemetry.report_string key: {labels.get_subr_module_name$ c_config}
     #                     -> value: "ready called"
     set c_yield to: c_yield_orig
@@ -78,7 +79,7 @@ subroutine ready p_config
     return
 
 
-label start p_config ?alt_goto: alt_goto
+label start p_config ?alt_goto: alt_goto    # not reentrant
     var alt_goto is iter_types.p_next_t
     #telemetry.report_string key: {labels.get_subr_module_name$ c_config}
     #                     -> value: "start"
@@ -91,7 +92,8 @@ label start p_config ?alt_goto: alt_goto
     =================================================
 
 
-subroutine new_c_yield c_yield: c_yield
+subroutine new_c_yield c_yield: c_yield  # not reentrant
+                                         # (but what if p_config is reentrant?)
     # This can only be called after ready or start has been called!
     # Otherwise, you'll get a p_config not set run-time error...
 
@@ -101,7 +103,8 @@ subroutine new_c_yield c_yield: c_yield
     #telemetry.report_string key: "new_c_yield" value: "returning"
     return
 
-subroutine new_c_done c_done: c_done
+subroutine new_c_done c_done: c_done     # not reentrant
+                                         # (but what if p_config is reentrant?)
     # This can only be called after ready or start has been called!
     # Otherwise, you'll get a p_config not set run-time error...
 

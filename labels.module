@@ -56,7 +56,7 @@ function gen_all_subroutines name$ returning iter_types.p_config_t
 function gen_subroutines mod name$ returning iter_types.p_config_t
     # Generates all of the subroutines named name$ in mod and not requiring
     # any parameters.
-    set ilabel to: 0
+    set ilabel to: 0  # auto
     goto producer.start return_label
 
   label p_next
