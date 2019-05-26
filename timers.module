@@ -139,7 +139,7 @@ function system_time
     =============================================================
     | X  | goto perror "timers.system_time: clock_gettime"
     |  X | return (`` (`(double)((Timespec.tv_sec` - istart_time) `)) + `
-               -> `(double)(Timespec.tv_nsec) * 1e-9`)
+    |    |     -> `(double)(Timespec.tv_nsec) * 1e-9`)
     =============================================================
 
 

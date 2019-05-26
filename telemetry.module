@@ -39,10 +39,10 @@ subroutine report_float key: key$ value: value
     | YN | eng == 0
     =========================================================
     | X  | `printf("%s: %.*f\n", ` key$ `, (int)(` inum_decimals `), `
-                              -> adj_value `);`
+    |    |                    -> adj_value `);`
     |    | return
     |  X | `printf("%s: %.*fe%.0f\n", ` key$ `, (int)(` inum_decimals `), `
-                                   -> adj_value `, ` eng `);`
+    |    |                         -> adj_value `, ` eng `);`
     |    | return
     =========================================================
 

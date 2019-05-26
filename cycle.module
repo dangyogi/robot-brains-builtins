@@ -193,7 +193,7 @@ subroutine run_all name$
     | NY | abs_secs >= current_time
     ==================================================================
     | X  | telemetry.report_float key: "cycle_period too short by"
-                               -> value: (current_time - abs_secs)
+    |    |                     -> value: (current_time - abs_secs)
     |  X | timers.pause max_time: abs_secs
     |    | return
     ==================================================================
