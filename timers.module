@@ -23,7 +23,7 @@ subroutine init_module
     | YN | `clock_gettime(CLOCK_MONOTONIC, &Timespec)` == -1
     =============================================================
     | X  | goto perror "timers.system_time: clock_gettime"
-    |  X | set istart_time to: `Timespec.tv_sec`
+    |  X | set istart_time to: (`Timespec.tv_sec`)
     =============================================================
     return
 
@@ -105,8 +105,8 @@ subroutine pause ?max_time: abs_secs
 
 function sleep_until? abs_secs
     set isecs to: (`(long)trunc(` abs_secs `)`)
-    return {events.sleep_until (isecs + istart_time)
-                           -> `(long)(` ((abs_secs - isecs) * 1e9) `)`}
+    return {events.sleep_until? (isecs + istart_time)
+                             -> (`(long)(` ((abs_secs - isecs) * 1e9) `)`)}
 
 
 subroutine sleep rel_secs
@@ -138,12 +138,13 @@ function system_time
     | YN | `clock_gettime(CLOCK_MONOTONIC, &Timespec)` == -1
     =============================================================
     | X  | goto perror "timers.system_time: clock_gettime"
-    |  X | return `(double)(Timespec.tv_sec` - istart_time `) + `
-               -> `(double)(Timespec.tv_nsec) * 1e-9`
+    |  X | return (`` (`(double)((Timespec.tv_sec` - istart_time) `)) + `
+               -> `(double)(Timespec.tv_nsec) * 1e-9`)
     =============================================================
 
 
 function abs_time rel_time
     # Converts relative time to absolute time.
     # abs_time and rel_time are time as a double in seconds.
-    return {system_time} + rel_time
+    return ({system_time} + rel_time)
+

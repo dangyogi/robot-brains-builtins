@@ -62,11 +62,11 @@ function irun
 
   timers.init_module
 
-  set cycle_period to: 20msec
+  set cycle_period to: 10msec
 
-  telemetry.report_string key: "irun" value: "called, doing run_all 'init'"
+  #telemetry.report_string key: "irun" value: "called, doing run_all 'init'"
   run_all "init"
-  telemetry.report_string key: "irun" value: "init done"
+  #telemetry.report_string key: "irun" value: "init done"
 
   goto wait_for_start
 
@@ -116,19 +116,19 @@ subroutine run_all name$
     # Another subr to start running
     var subr is subr_t
     var mod is module
-    telemetry.report_string key: "run_all.c_yield" value: "got another subr"
-    telemetry.report_string key: "c_yield, got"
-                         -> value: {labels.get_subr_name$ subr}
-    telemetry.report_string key: "c_yield, in"
-                         -> value: {labels.get_subr_module_name$ subr}
-
-    telemetry.report_string key: "c_yield" value: "calling next subr"
+    #telemetry.report_string key: "run_all.c_yield" value: "got another subr"
+    #telemetry.report_string key: "c_yield, got"
+    #                     -> value: {labels.get_subr_name$ subr}
+    #telemetry.report_string key: "c_yield, in"
+    #                     -> value: {labels.get_subr_module_name$ subr}
+    #
+    #telemetry.report_string key: "c_yield" value: "calling next subr"
     inum_running_tasks += 1
     subr returning_to: task_done
 
   label c_done
     # Nothing else to start running, switch suspend to run_next_task
-    telemetry.report_string key: "irun" value: "c_done called, no more subrs!"
+    #telemetry.report_string key: "irun" value: "c_done called, no more subrs!"
     set suspend to: run_next_task 
     goto run_task
 
@@ -171,13 +171,14 @@ subroutine run_all name$
     | -YYNN | inum_running_tasks <= 0
     | -YNYN | inum_tasks[i_next] == 0
     ======================================================================
-    | XX    | return from: run_all   # no more tasks scheduled, all done!
+    | XX    | telemetry.report_string key: "run_all done with" value: name$
+    |       | return from: run_all   # no more tasks scheduled, all done!
     |   X   | goto abort "running tasks remaining when all tasks are done"
     |    X  | timers.pause  # forever
-    |       | set time_mark to: {timers.system_time}
     |       | continue
     |     X | pause (time_mark + cycle_period)
     ======================================================================
+    set time_mark to: {timers.system_time}
     # swap i_next and i_current
     set i_next to: i_current
     set i_current to: (1 - i_next)
@@ -187,13 +188,14 @@ subroutine run_all name$
     goto run_task  # skip i_task increment
 
   subroutine pause abs_secs
-    set time_mark to: {timers.system_time}
+    set current_time to: {timers.system_time}
     ==================================================================
-    | NY | abs_secs >= time_mark
+    | NY | abs_secs >= current_time
     ==================================================================
     | X  | telemetry.report_float key: "cycle_period too short by"
-                               -> value: (time_mark - abs_secs)
-    |  X | timers.pause max_time: abs_secs returning_to: return_label
+                               -> value: (current_time - abs_secs)
+    |  X | timers.pause max_time: abs_secs
+    |    | return
     ==================================================================
 
 
@@ -236,7 +238,3 @@ subroutine schedule subr
     inum_running_tasks += 1
     subr returning_to: task_done
 
-
-subroutine delay secs
-    # FIX
-    return

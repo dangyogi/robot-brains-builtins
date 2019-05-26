@@ -17,8 +17,10 @@ subroutine reset
     return
 
 
-function sleep_until secs nsecs
+function sleep_until? isecs nsecs
     # Returns true? if the timer expired before any other events happened.
+    `Timespec.tv_sec = ` isecs `;`
+    `Timespec.tv_nsec = ` nsecs `;`
     `errno = clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &Timespec, NULL);`
     =======================================================
     | NY | `errno` == 0
