@@ -9,6 +9,7 @@ module
 use telemetry
 use modules
 use labels
+use stub_events as events
 use cycle
 
 type subr_t is subroutine
@@ -26,3 +27,7 @@ label abort message$
     `fprintf(stderr, "%s\n", ` message$ `);`
     goto cycle.terminate 1
 
+
+label perror message$
+    `perror(` message$ `);`
+    goto cycle.terminate 1

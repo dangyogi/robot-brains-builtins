@@ -1,0 +1,149 @@
+# timers.module
+
+# Provides sleep and sleep_until to tasks.
+#
+# Does not provide a way to start a task after some amount of time (e.g., a
+# "timer"), as this could confuse the cycle module if all of its tasks are
+# done, but there is still a task that will start in the future.  Not sure how
+# much this is needed anyway...
+#
+
+module
+
+var timer_labels is label
+var resume is label
+
+dim timers[50]
+dim timer_labels[50]
+
+
+subroutine init_module
+    events.init_module
+    =============================================================
+    | YN | `clock_gettime(CLOCK_MONOTONIC, &Timespec)` == -1
+    =============================================================
+    | X  | goto perror "timers.system_time: clock_gettime"
+    |  X | set istart_time to: `Timespec.tv_sec`
+    =============================================================
+    return
+
+
+subroutine reset
+    set num_timers to: 0
+    events.reset
+    return
+
+
+label set_timer abs_secs resume
+    # Suspends until abs_secs, picks up at resume
+    =============================================================
+    | NY | num_timers < 50
+    =============================================================
+    | X  | goto abort "timers: out of timers"
+    |  X | set timers[num_timers] to: abs_secs
+    |    | set timer_labels[num_timers] to: resume
+    |    | num_timers += 1
+    |    | goto cycle.suspend
+    =============================================================
+
+
+subroutine pause ?max_time: abs_secs
+    # Suspend the program until the next timer expires, but not after
+    # max_time.
+    #
+    # Used by cycle.run_all.
+    =============================================================
+    | NNYY | num_timers > 0
+    | NYNY | got? max_time:
+    =============================================================
+    | X    | events.sleep_forever
+    |      | return
+    |  X   | set dummy? to: {sleep_until? abs_secs}
+    |      | return
+    |   X  | set target_time to: timers[0]
+    |      | set next_timer to: 0
+    |      | set itimer to: 1
+    |      | goto get_next_timer
+    |    X | set target_time to: abs_secs
+    |      | set next_timer to: -1
+    |      | set itimer to: 0
+    |      | goto get_next_timer
+    =============================================================
+  
+  label get_next_timer
+    =============================================================
+    | NY | itimer < num_timers
+    =============================================================
+    | X  | set hit_timer? to: {sleep_until? target_time}
+    |    | goto wrapup
+    |  X | continue
+    =============================================================
+    =============================================================
+    | NY | target_time < timers[itimer]
+    =============================================================
+    | X  | set target_time to: timers[itimer]
+    |    | set next_timer to: itimer
+    |  X | itimer += 1
+    |    | goto get_next_timer
+    =============================================================
+
+  label wrapup
+    var next_label is label
+    =============================================================
+    | YYN | hit_timer?
+    | YN- | next_timer >= 0
+    =============================================================
+    | X   | set next_label to: timer_labels[next_timer]
+    |     | num_timers -= 1
+    |     | # move last timer into vacated hole left by next_timer
+    |     | set timers[next_timer] to: timers[num_timers]
+    |     | set timer_labels[next_timer] to: timer_labels[num_timers]
+    |     | cycle.push_task next_label
+    |  XX | return
+    =============================================================
+
+
+function sleep_until? abs_secs
+    set isecs to: (`(long)trunc(` abs_secs `)`)
+    return {events.sleep_until (isecs + istart_time)
+                           -> `(long)(` ((abs_secs - isecs) * 1e9) `)`}
+
+
+subroutine sleep rel_secs
+    # Returns in rel_secs time.
+    #
+    # This can only be called by tasks running under the cycle module.
+    done
+    sleep_until {abs_time rel_secs} returning_to: return_label
+
+
+subroutine sleep_until abs_secs
+    # Returns at abs_secs
+    #
+    # loop:
+    # set time_mark to: {timers.system_time}
+    # <do stuff>
+    # sleep_until (time_mark + period)
+    # goto loop
+    #
+    # This can only be called by tasks running under the cycle module.
+
+    done
+    goto set_timer abs_secs return_label
+
+
+function system_time
+    # Returns time as a double in seconds since the start of the program.
+    =============================================================
+    | YN | `clock_gettime(CLOCK_MONOTONIC, &Timespec)` == -1
+    =============================================================
+    | X  | goto perror "timers.system_time: clock_gettime"
+    |  X | return `(double)(Timespec.tv_sec` - istart_time `) + `
+               -> `(double)(Timespec.tv_nsec) * 1e-9`
+    =============================================================
+
+
+function abs_time rel_time
+    # Converts relative time to absolute time.
+    # abs_time and rel_time are time as a double in seconds.
+    return {system_time} + rel_time

@@ -1,13 +1,55 @@
 # cycle.module
 
 # The cycle module orchestrates the whole program!
+#
+# It manages a set of running tasks.  The tasks run through a series of
+# "cycles", where each task is given a chance to run another step forward.
+#
+# Each task is SUBROUTINE taking no parameters.  The cycle module calls the
+# subroutine to start the task, and the task simply returns when it is done.
+#
+# Tasks are started in one of two ways:
+#
+#   1. By irun, using run_all to run all subroutines of a given name (e.g.,
+#      "init", "start", or "stop").
+#
+#   2. By one task calling "schedule" to start another task.  Schedule will
+#      start (call) the new task in the current cycle and the two tasks will
+#      then run concurrently.  The termination of either task does not affect
+#      the other task.
+#
+#      Note that the cycle module does not provide any mechanism for either
+#      task to be notified when the other one terminates.  If this is desired,
+#      it is up to each task to arrange a way to communicate this between
+#      themselves.
+#
+#
+# At the end of each cycle, a task must do one of three things:
+#
+#   1. cycle.next
+#      This will return back to the task in the next cycle to give it a chance
+#      to run another step forward.
+#
+#   2. goto cycle.suspend
+#      This will suspend the task so that it is no longer given chances to run
+#      during subsequent cycles.
+#
+#      It is assumed that the task is using some other mechanism (outside of
+#      this cycle module) to reinstate the task at some later time (for example,
+#      after a timer expires).
+#
+#   3. return
+#      This signals that the task is done.
+#
+
 
 module
 
-use consumer labels.iter_types c_yield c_done new_p_next: set_what_next
+use consumer labels.iter_types c_yield c_done new_p_next: set_suspend
 
 var tasks is label_t
-var what_next is label_t
+var suspend is label_t   # Suspend the current task.  Some other module has to
+                         # wake it up...
 var p_config is labels.iter_types.p_config_t
 
 dim tasks[100, 2]
@@ -17,9 +59,15 @@ dim inum_tasks[2]
 
 function irun
   # Returns iexit_status to be returned from main.
+
+  timers.init_module
+
+  set cycle_period to: 20msec
+
   telemetry.report_string key: "irun" value: "called, doing run_all 'init'"
   run_all "init"
   telemetry.report_string key: "irun" value: "init done"
+
   goto wait_for_start
 
   label wait_for_start
@@ -38,6 +86,11 @@ function irun
     return iexit_status from: irun
 
 
+subroutine set_cycle_period secs
+    set cycle_period to: secs
+    return
+
+
 subroutine run_all name$
     # Runs all subroutines named name$ within all modules.
     #
@@ -48,11 +101,14 @@ subroutine run_all name$
 
     telemetry.report_string key: "run_all" value: name$
 
+    set inum_running_tasks to: 0
     set i_current to: 0     # currently running tasks array (0 or 1)
     set i_next to: 1        # next tasks array (that new tasks are pushed to)
     set i_task to: 0        # next task to run in currently running tasks array
     set inum_tasks[0] to: 0 # num_tasks in tasks array 0
     set inum_tasks[1] to: 0 # num_tasks in tasks array 1
+    timers.reset
+    set time_mark to: {timers.system_time}
 
     goto consumer.start {labels.gen_all_subroutines name$}
 
@@ -67,23 +123,30 @@ subroutine run_all name$
                          -> value: {labels.get_subr_module_name$ subr}
 
     telemetry.report_string key: "c_yield" value: "calling next subr"
-    subr returning_to: do_what_next
+    inum_running_tasks += 1
+    subr returning_to: task_done
 
   label c_done
-    # Nothing else to start running, switch what_next to run_next_task
+    # Nothing else to start running, switch suspend to run_next_task
     telemetry.report_string key: "irun" value: "c_done called, no more subrs!"
-    set what_next to: run_next_task 
+    set suspend to: run_next_task 
     goto run_task
 
-  subroutine set_what_next p_next: p_next
+  subroutine set_suspend p_next: p_next
     # This only gets called while the producer is still active, so always
-    # update what_next.
+    # update suspend.
     var p_next is labels.iter_types.p_next_t
-    set what_next to: p_next 
+    set suspend to: p_next 
     return
 
-  label do_what_next
-    goto what_next
+  label task_done
+    ===============================================
+    | YN | inum_running_tasks > 0
+    ===============================================
+    | X  | inum_running_tasks -= 1
+    |    | goto suspend
+    |  X | goto abort "cycle.task_done: inum_running_tasks <= 0"
+    ===============================================
 
 
   label run_next_task
@@ -95,7 +158,7 @@ subroutine run_all name$
     ======================================================================
     | YN | i_task < inum_tasks[i_current]
     ======================================================================
-    | X  | goto tasks[i_task, i_current] # always goes to do_what_next when
+    | X  | goto tasks[i_task, i_current] # always goes to task_done when
                                          # task is done
     |  X | goto swap_task_lists
     ======================================================================
@@ -104,24 +167,40 @@ subroutine run_all name$
   label swap_task_lists
     # swap i_next into i_current, re-init and run all i_current tasks
     ======================================================================
-    | NYY | isActive?
-    | -YN | inum_tasks[i_next] == 0
+    | NYYYY | isActive?
+    | -YYNN | inum_running_tasks <= 0
+    | -YNYN | inum_tasks[i_next] == 0
     ======================================================================
-    | XX  | return from: run_all   # no more tasks scheduled, all done!
-    |   X | # swap i_next and i_current
-    |     | set i_next to: i_current
-    |     | set i_current to: (1 - i_next)
-    |     | # start over on the new task list
-    |     | set i_task to: 0               # for the current task list
-    |     | set inum_tasks[i_next] to: 0   # number of tasks in next task list
-    |     | goto run_task  # skip i_task increment
+    | XX    | return from: run_all   # no more tasks scheduled, all done!
+    |   X   | goto abort "running tasks remaining when all tasks are done"
+    |    X  | timers.pause  # forever
+    |       | set time_mark to: {timers.system_time}
+    |       | continue
+    |     X | pause (time_mark + cycle_period)
     ======================================================================
+    # swap i_next and i_current
+    set i_next to: i_current
+    set i_current to: (1 - i_next)
+    # start over on the new task list
+    set i_task to: 0               # for the current task list
+    set inum_tasks[i_next] to: 0   # number of tasks in next task list
+    goto run_task  # skip i_task increment
+
+  subroutine pause abs_secs
+    set time_mark to: {timers.system_time}
+    ==================================================================
+    | NY | abs_secs >= time_mark
+    ==================================================================
+    | X  | telemetry.report_float key: "cycle_period too short by"
+                               -> value: (time_mark - abs_secs)
+    |  X | timers.pause max_time: abs_secs returning_to: return_label
+    ==================================================================
 
 
 subroutine next
     # Returns on next cycle
     done
-    push_task return_label returning_to: what_next
+    push_task return_label returning_to: suspend
 
 
 subroutine push_task task ?task_list: itask_list
@@ -143,10 +222,10 @@ subroutine push_task task ?task_list: itask_list
 
 
 subroutine schedule subr
-    # Start a new thread
+    # Start a new thread in the current cycle.
 
     # This will return from this subroutine to let the main thread continue in
-    # this cycle
+    # the current cycle.
     push_task return_label task_list: i_current
 
     # Because the return_label has been captured and will be called later,
@@ -154,7 +233,8 @@ subroutine schedule subr
     done
 
     # Start the new thread
-    subr returning_to: do_what_next
+    inum_running_tasks += 1
+    subr returning_to: task_done
 
 
 subroutine delay secs
